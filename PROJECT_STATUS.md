@@ -28,7 +28,7 @@ Each phase is committed separately once its tests pass.
 | 1 | Foundation, architecture, schema, migrations, integrity triggers | ✅ Complete |
 | 2 | Authentication, sessions, roles & permissions, staff management | ✅ Complete |
 | 3 | Business settings, app shell, dashboard | ✅ Complete |
-| 4 | Products, categories, inventory ledger, zero-stock archiving | ⏳ |
+| 4 | Products, categories, inventory ledger, zero-stock archiving | ✅ Complete |
 | 5 | Suppliers, stock purchases, supplier payments | ⏳ |
 | 6 | POS checkout, sales, receipts, returns, voids | ⏳ |
 | 7 | Customers, orders, payments ledger | ⏳ |
@@ -126,5 +126,41 @@ change → staff creation.
 return + refund, completed order with direct cost, open order deposit, expense correction, out-of-period expense) checking
 revenue, COGS, gross/net profit, cash collected, receivables, inventory valuation, payment-method split and daily trend.
 `tsc`, `eslint`, `next build` clean. Browser check of dashboard and settings save (audit row verified in PostgreSQL).
+
+**Unresolved**: none.
+
+---
+
+## Phase 4 — Products, categories and inventory ✅
+
+**Implemented**
+
+- `applyStockChange`: the single path for stock changes. Locks the product row (`SELECT … FOR UPDATE`), blocks
+  negative stock unless the business setting allows it, updates quantity and status, writes exactly one ledger row.
+- **Automatic zero-stock archiving**: when stock reaches zero an ACTIVE product becomes `OUT_OF_STOCK`, leaves the
+  POS catalogue, `out_of_stock_at` is recorded and an audit entry written. SKU, prices, sales, movements and profit history are untouched.
+- **Restock & reactivate**: `receiveStock` adds stock to the existing record (never a duplicate), recomputes the
+  weighted-average cost (with price history) and returns the product to the catalogue. Manually archived/discontinued
+  products only return when reactivation is explicitly requested.
+- Damage, loss and manual adjustments with mandatory reasons; manual archive / discontinue / reactivate.
+- Product CRUD with SKU auto-generation, case-insensitive unique SKU, unique barcode, price change history.
+- Lifetime product statistics: opening stock, purchased, sold, returned, written off, revenue, COGS, gross profit, last sale.
+- Categories with product counts. Inventory page: stock on hand with valuation, low stock, archived/out-of-stock
+  view (with dates and "History & restock"), and the keyset-paginated movement ledger with type filters.
+- Image storage outside PostgreSQL: browser-side WebP compression (≤800px), authenticated upload with magic-byte
+  validation, S3-compatible driver (Cloudflare R2) or local disk in development, authenticated file serving.
+- Cost prices are hidden from (and cannot be changed by) roles without `products:view_cost`.
+
+**Files**: `src/server/services/{inventory,products,categories,suppliers}.ts`, `src/server/actions/products.ts`,
+`src/server/storage/index.ts`, `src/app/api/{uploads,files}/**`, `src/lib/client/image.ts`, `src/lib/validation/products.ts`,
+`src/app/(app)/{products,categories,inventory}/**`, `src/components/app/{product-form,image-upload,product-thumb,status-badges,pagination-links,search-box}.tsx`.
+
+**Migrations**: none (schema from Phase 1).
+
+**Tests**: 86 passing. New: opening stock ledger entry, automatic archive at zero (catalogue exclusion, audit,
+preserved history), negative stock prevention and override, restock + reactivation with weighted-average cost,
+manual-archive protection, damage/loss/adjustment rules, **12 concurrent sales of 5 units → exactly 5 succeed**,
+ledger = quantity invariant, product statistics, SKU generation/uniqueness, price history, list filters, categories.
+Browser check: product creation → detail page with ledger.
 
 **Unresolved**: none.
