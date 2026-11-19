@@ -45,3 +45,9 @@ export function QuantityChange({ value }: { value: number }) {
     </span>
   );
 }
+
+export function PurchaseStatusBadge({ status }: { status: string }) {
+  if (status === "RECEIVED") return <Badge variant="outline" className="border-success/40 text-success">Received</Badge>;
+  if (status === "CANCELLED") return <Badge variant="outline" className="text-muted-foreground">Cancelled</Badge>;
+  return <Badge variant="outline" className="border-warning/60">Awaiting delivery</Badge>;
+}

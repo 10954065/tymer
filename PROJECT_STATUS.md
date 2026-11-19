@@ -29,7 +29,7 @@ Each phase is committed separately once its tests pass.
 | 2 | Authentication, sessions, roles & permissions, staff management | ✅ Complete |
 | 3 | Business settings, app shell, dashboard | ✅ Complete |
 | 4 | Products, categories, inventory ledger, zero-stock archiving | ✅ Complete |
-| 5 | Suppliers, stock purchases, supplier payments | ⏳ |
+| 5 | Suppliers, stock purchases, supplier payments | ✅ Complete |
 | 6 | POS checkout, sales, receipts, returns, voids | ⏳ |
 | 7 | Customers, orders, payments ledger | ⏳ |
 | 8 | Expenses, cash reconciliation | ⏳ |
@@ -162,5 +162,29 @@ preserved history), negative stock prevention and override, restock + reactivati
 manual-archive protection, damage/loss/adjustment rules, **12 concurrent sales of 5 units → exactly 5 succeed**,
 ledger = quantity invariant, product statistics, SKU generation/uniqueness, price history, list filters, categories.
 Browser check: product creation → detail page with ledger.
+
+**Unresolved**: none.
+
+---
+
+## Phase 5 — Suppliers and stock purchases ✅
+
+**Implemented**
+
+- Suppliers (name, contact person, phone, email, address, notes, active flag) with purchase totals and outstanding balances.
+- Purchases: `DRAFT` (ordered / on the way) → `RECEIVED` (stock in, weighted-average cost, sold-out products reactivated,
+  ledger rows referencing the purchase) or `CANCELLED` (drafts only, no outstanding payments). Received purchases are final (DB trigger).
+- Multi-line purchase form with searchable product picker, auto-filled unit cost and live total; optional "received now".
+- Supplier payment ledger (append-only): partial payments, overpayment prevention, reversals via equal negative entries.
+- Purchases are **not** operating expenses and are not COGS; they raise inventory value. COGS is recognised at sale.
+
+**Files**: `src/server/services/{suppliers,purchases}.ts`, `src/server/actions/purchases.ts`, `src/lib/validation/purchases.ts`,
+`src/components/app/product-picker.tsx`, `src/app/(app)/{suppliers,purchases}/**`, route-level `loading.tsx` files.
+
+**Migrations**: none.
+
+**Tests**: 93 passing. New: drafts do not move stock; receiving updates stock, ledger and weighted-average cost and
+reactivates sold-out products; double receive blocked; purchases excluded from expenses/COGS; payments, overpayment
+guard, reversals (and double reversal guard); draft editing; cancellation rules; duplicate/empty line validation.
 
 **Unresolved**: none.
