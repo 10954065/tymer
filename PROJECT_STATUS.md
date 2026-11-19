@@ -26,7 +26,7 @@ Each phase is committed separately once its tests pass.
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 1 | Foundation, architecture, schema, migrations, integrity triggers | ✅ Complete |
-| 2 | Authentication, sessions, roles & permissions, staff management | ⏳ |
+| 2 | Authentication, sessions, roles & permissions, staff management | ✅ Complete |
 | 3 | Business settings, app shell, dashboard | ⏳ |
 | 4 | Products, categories, inventory ledger, zero-stock archiving | ⏳ |
 | 5 | Suppliers, stock purchases, supplier payments | ⏳ |
@@ -61,5 +61,39 @@ Each phase is committed separately once its tests pass.
 
 **Tests**: 37 passing (money, dates, schema integrity: append-only ledgers, delete protection,
 balance checks, SKU uniqueness, payment sign rules, immutable sales/expenses, sequences). `tsc --noEmit` clean.
+
+**Unresolved**: none.
+
+---
+
+## Phase 2 — Authentication, roles and staff management ✅
+
+**Implemented**
+
+- Server-side sessions: 256-bit random cookie token, only its SHA-256 hash stored; `httpOnly`, `sameSite=lax`,
+  `secure` in production; sliding expiry refreshed at most hourly (minimises database writes).
+- bcrypt (cost 12) password hashing, password policy, timing-equalised unknown-user path.
+- Account lockout after 5 failed attempts (15 minutes) plus per-IP in-memory rate limit on sign-in.
+- Forced password change for staff created/reset by the owner.
+- Role/permission matrix (`OWNER`, `MANAGER`, `CASHIER`, `INVENTORY_STAFF`) shared by server and navigation.
+  Every page calls `requirePagePermission`, every action calls `requireActionPermission`.
+- `proxy.ts` performs optimistic redirects only; authorisation always happens on the server.
+- Staff & Permissions page: create, edit role/details, deactivate, reset password, unlock; last-owner and
+  self-deactivation protection; role changes sign the user out everywhere; all changes audited (changed fields only).
+- App shell: collapsible sidebar filtered by role, mobile sheet navigation, light/dark theme, user menu.
+- Design system: warm linen ground, white surfaces, charcoal text, forest-green accent, Fraunces + Geist.
+- Safe action error handling (`runAction`): business errors shown, database/unknown errors never leaked.
+- Seed script creating the first owner from environment variables.
+
+**Files**: `src/server/auth/**`, `src/server/services/{auth,users,audit,settings}.ts`, `src/server/actions/{run,auth,users}.ts`,
+`src/proxy.ts`, `src/lib/{permissions,navigation}.ts`, `src/lib/validation/**`, `src/components/app/**`,
+`src/app/(auth)/login/**`, `src/app/(app)/{layout,loading,error}.tsx`, `src/app/(app)/{staff,account,no-access}/**`, `scripts/seed.ts`.
+
+**Migrations**: none.
+
+**Tests**: 59 passing (auth: sign-in, generic errors, lockout, expiry, deactivation, password change; staff:
+creation, duplicates, last-owner rule, self-deactivation, session revocation on role change, password reset,
+bootstrap; permission matrix). `tsc`, `eslint`, `next build` clean. Manual browser check: login → forced password
+change → staff creation.
 
 **Unresolved**: none.
