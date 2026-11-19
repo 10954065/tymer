@@ -1,0 +1,24 @@
+# Local PostgreSQL for development and automated tests.
+# Production uses Neon PostgreSQL; this container only mirrors the engine version.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: smartliving-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: smartliving
+      POSTGRES_PASSWORD: smartliving_local
+      POSTGRES_DB: smartliving_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - smartliving-pgdata:/var/lib/postgresql/data
+      - ./scripts/docker-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartliving -d smartliving_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  smartliving-pgdata:
