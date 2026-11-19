@@ -34,7 +34,7 @@ Each phase is committed separately once its tests pass.
 | 7 | Customers, orders, payments ledger | ✅ Complete |
 | 8 | Expenses, cash reconciliation | ✅ Complete |
 | 9 | Financial reports, analytics, PDF/Excel/CSV export | ✅ Complete |
-| 10 | PWA, offline queue, synchronisation, conflict review | ⏳ |
+| 10 | PWA, offline queue, synchronisation, conflict review | ✅ Complete |
 | 11 | Audit trail UI, security hardening, DB health & optimisation | ⏳ |
 | 12 | Backups, deployment, documentation, final verification | ⏳ |
 
@@ -304,3 +304,35 @@ margin; slow movers flagged; every report builds; inventory totals; CSV escaping
 (Hand-calculated examples for revenue, COGS, gross/net profit, receivables and valuation were added in Phases 3, 6 and 7.)
 
 **Unresolved**: none.
+
+---
+
+## Phase 10 — Offline support and multi-device synchronisation ✅
+
+**Implemented**
+
+- Installable PWA: web manifest, maskable icons, Apple touch icon, standalone display, "New sale" shortcut.
+- Service worker (`public/sw.js`): cache-first static assets and product images, network-first navigations with
+  offline fallback, never caches writes; Background Sync tag asks open windows to flush the outbox.
+- Dexie (IndexedDB) on each device: cached catalogue (refreshed on every online POS visit), outbox of offline sales.
+- POS: when offline — or if the network drops during checkout — the sale is queued with its idempotency key and
+  local stock is reduced; a "Saved offline" confirmation is shown.
+- Sync engine: runs on load, on reconnect, on Background Sync and on demand; exponential backoff only while sales are
+  pending (no idle polling, so Neon can scale to zero). Network failures keep sales queued; nothing is discarded.
+- Server `/api/sync/sales`: per-sale processing — duplicate keys return the original sale; current prices and stock
+  are re-checked; valid sales are recorded (`source = OFFLINE`, device id, client time); mismatches become
+  `sync_conflicts` (never deleted). Owner/manager conflict review page: record the sale as made (offline prices,
+  stock override) or dismiss with a note — both audited.
+- Header sync indicator: online/offline, pending count, conflicts, "Sync now".
+
+**Files**: `public/sw.js`, `public/icons/*`, `src/app/manifest.ts`, `src/app/offline/page.tsx`, `src/app/api/sync/sales/route.ts`,
+`src/lib/offline/{db,outbox}.ts`, `src/server/services/sync.ts`, `src/server/actions/sync.ts`, `src/components/app/sync-status.tsx`,
+`src/app/(app)/pos/pos-client.tsx`, `src/app/(app)/sales/sync-conflicts/**`.
+
+**Migrations**: none (tables from Phase 1).
+
+**Tests**: 129 passing. New: offline sale recorded once across retries; stock conflict flagged (no oversell); price-change
+conflict and owner "record as made"; dismissal kept permanently; outbox queues, survives network failure, retries with the
+same key, marks conflicts. Browser check: service worker controls the POS, offline sale queued, synced on reconnect (SAL-000002).
+
+**Unresolved**: iOS Safari has no Background Sync; syncing there happens when the app is opened or regains connection (documented).

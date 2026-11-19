@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app/app-shell";
+import { SyncStatus } from "@/components/app/sync-status";
 import { navigationFor } from "@/lib/navigation";
 import { requireSession } from "@/server/auth/current-user";
 import { getCachedSettings } from "@/server/queries/settings";
@@ -9,7 +10,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const { fullName, username, role } = session.user;
 
   return (
-    <AppShell navigation={navigationFor(role)} user={{ fullName, username, role }} businessName={settings.businessName}>
+    <AppShell
+      navigation={navigationFor(role)}
+      user={{ fullName, username, role }}
+      businessName={settings.businessName}
+      headerExtras={<SyncStatus />}
+    >
       {children}
     </AppShell>
   );
