@@ -33,7 +33,7 @@ Each phase is committed separately once its tests pass.
 | 6 | POS checkout, sales, receipts, returns, voids | ✅ Complete |
 | 7 | Customers, orders, payments ledger | ✅ Complete |
 | 8 | Expenses, cash reconciliation | ✅ Complete |
-| 9 | Financial reports, analytics, PDF/Excel/CSV export | ⏳ |
+| 9 | Financial reports, analytics, PDF/Excel/CSV export | ✅ Complete |
 | 10 | PWA, offline queue, synchronisation, conflict review | ⏳ |
 | 11 | Audit trail UI, security hardening, DB health & optimisation | ⏳ |
 | 12 | Backups, deployment, documentation, final verification | ⏳ |
@@ -277,5 +277,30 @@ guard; cancellation refund cap and no revenue; edits never below amount paid; cu
 
 **Tests**: 118 passing. New: expenses reduce net operating profit; reversal + replacement keeps exact totals and history;
 detail-only edits; cash movements by method, expected closing, difference explanation rule, final closed day, one session per day.
+
+**Unresolved**: none.
+
+---
+
+## Phase 9 — Financial reports and analytics ✅
+
+**Implemented**
+
+- Report engine (`services/reports/tables.ts`) producing typed tables for: profit & loss, sales by day/week/month,
+  product performance (best sellers first, slow movers flagged, net of returns, margin), inventory valuation,
+  stock movements by type, payment methods, operating expenses by category, customer balances, order profitability.
+- Reports page: daily/weekly/monthly/yearly/custom periods, KPI strip (net revenue, COGS, gross profit, operating
+  expenses, net operating profit), revenue/profit chart, report navigation, totals rows.
+- Exports from the same data: CSV (UTF-8 BOM, formula-injection safe), Excel (exceljs, typed number formats),
+  PDF (generated in the browser with jsPDF so the server does no heavy work), and print stylesheet. Exports are
+  permission-checked, rate-limited and audited.
+
+**Files**: `src/server/services/reports/{tables,export}.ts`, `src/app/api/exports/[report]/route.ts`, `src/app/(app)/reports/**`.
+
+**Migrations**: none.
+
+**Tests**: 122 passing. New: P&L lines equal the financial summary; product performance nets returns and computes
+margin; slow movers flagged; every report builds; inventory totals; CSV escaping/injection guard; valid XLSX output.
+(Hand-calculated examples for revenue, COGS, gross/net profit, receivables and valuation were added in Phases 3, 6 and 7.)
 
 **Unresolved**: none.
