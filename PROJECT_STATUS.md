@@ -32,7 +32,7 @@ Each phase is committed separately once its tests pass.
 | 5 | Suppliers, stock purchases, supplier payments | ✅ Complete |
 | 6 | POS checkout, sales, receipts, returns, voids | ✅ Complete |
 | 7 | Customers, orders, payments ledger | ✅ Complete |
-| 8 | Expenses, cash reconciliation | ⏳ |
+| 8 | Expenses, cash reconciliation | ✅ Complete |
 | 9 | Financial reports, analytics, PDF/Excel/CSV export | ⏳ |
 | 10 | PWA, offline queue, synchronisation, conflict review | ⏳ |
 | 11 | Audit trail UI, security hardening, DB health & optimisation | ⏳ |
@@ -252,5 +252,30 @@ partial splits, over-return guard), voids, payment reversal. Browser check: scan
 **Tests**: 114 passing. New: deposit is cash not revenue; completion recognises revenue, deducts stock with cost snapshot,
 includes direct costs in COGS; receivables split between open and completed orders; multiple payments and overpayment
 guard; cancellation refund cap and no revenue; edits never below amount paid; customer spend and balance summary.
+
+**Unresolved**: none.
+
+---
+
+## Phase 8 — Expenses and cash management ✅
+
+**Implemented**
+
+- Expenses with category, date, payment method, optional order link (direct order cost), optional receipt attachment
+  (compressed image or PDF in object storage) and notes. Default categories seeded (rent, utilities, transport, salaries…).
+- Corrections never edit money: a reversal entry (same date, negative) plus an optional replacement; non-financial
+  details editable with audit. Order-linked expenses are excluded from operating expenses and included in order COGS.
+- Expenses page: period filter, operating vs direct totals, category breakdown, receipt links, reversal action.
+- Daily cash reconciliation: opening float (suggested from the previous count), live cash received / refunds / cash
+  expenses / cash supplier payments, expected closing, counted cash, difference with mandatory explanation; closing
+  snapshots the figures and makes the day final (DB trigger). History of all reconciliations with staff responsible.
+
+**Files**: `src/server/services/{expenses,cash}.ts`, `src/server/actions/expenses.ts`, `src/lib/validation/expenses.ts`,
+`src/app/(app)/{expenses,cash}/**`.
+
+**Migrations**: none.
+
+**Tests**: 118 passing. New: expenses reduce net operating profit; reversal + replacement keeps exact totals and history;
+detail-only edits; cash movements by method, expected closing, difference explanation rule, final closed day, one session per day.
 
 **Unresolved**: none.
