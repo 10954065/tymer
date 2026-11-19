@@ -28,11 +28,24 @@ export interface SettingsInput {
 
 export async function updateSettings(db: DbClient, actor: Actor, input: SettingsInput): Promise<BusinessSettings> {
   const current = await getSettings(db);
-  const changes = diffFields(current as unknown as Record<string, unknown>, input as unknown as Record<string, unknown>);
+  // Whitelist the editable columns so stray input keys can never reach the update or the audit log.
+  const values = {
+    businessName: input.businessName,
+    address: input.address,
+    phone: input.phone,
+    email: input.email,
+    receiptFooter: input.receiptFooter,
+    allowNegativeStock: input.allowNegativeStock,
+    defaultReorderThreshold: input.defaultReorderThreshold,
+    cashierMaxDiscountBps: input.cashierMaxDiscountBps,
+    taxRateBps: input.taxRateBps,
+    taxLabel: input.taxLabel,
+  };
+  const changes = diffFields(current as unknown as Record<string, unknown>, values);
   if (!changes) return current;
   const [updated] = await db
     .update(businessSettings)
-    .set({ ...input, updatedBy: actor.id })
+    .set({ ...values, updatedBy: actor.id })
     .where(eq(businessSettings.id, 1))
     .returning();
   await recordAudit(db, { userId: actor.id, action: "settings.updated", entityType: "settings", entityId: 1, ...changes });

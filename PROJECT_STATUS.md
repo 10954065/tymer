@@ -27,7 +27,7 @@ Each phase is committed separately once its tests pass.
 | --- | --- | --- |
 | 1 | Foundation, architecture, schema, migrations, integrity triggers | ✅ Complete |
 | 2 | Authentication, sessions, roles & permissions, staff management | ✅ Complete |
-| 3 | Business settings, app shell, dashboard | ⏳ |
+| 3 | Business settings, app shell, dashboard | ✅ Complete |
 | 4 | Products, categories, inventory ledger, zero-stock archiving | ⏳ |
 | 5 | Suppliers, stock purchases, supplier payments | ⏳ |
 | 6 | POS checkout, sales, receipts, returns, voids | ⏳ |
@@ -95,5 +95,36 @@ balance checks, SKU uniqueness, payment sign rules, immutable sales/expenses, se
 creation, duplicates, last-owner rule, self-deactivation, session revocation on role change, password reset,
 bootstrap; permission matrix). `tsc`, `eslint`, `next build` clean. Manual browser check: login → forced password
 change → staff creation.
+
+**Unresolved**: none.
+
+---
+
+## Phase 3 — Business settings and dashboard ✅
+
+**Implemented**
+
+- Financial engine (`src/server/services/reports/financials.ts`): one aggregated SQL round-trip per period for
+  gross sales, discounts, returns, order revenue (on completion only), net revenue, tax, COGS (historical cost
+  snapshots, restocked returns, order product and direct costs), gross profit, operating expenses (reversals net out,
+  stock purchases excluded), net operating profit and cash collected. Plus receivables (sales, completed orders,
+  open orders, customer credit), inventory valuation (qty × weighted-average cost), daily trend and payment-method split.
+- Dashboard: today's revenue / collected / gross profit, receivables, inventory value, monthly revenue, gross profit,
+  operating expenses, net operating profit, low-stock list, recent sales and a 30-day revenue vs gross-profit chart.
+  Cached with `unstable_cache` (tag `dashboard`), invalidated by every financial transaction, 5-minute fallback.
+- Business settings page (owner only): business details, receipt footer, tax rate, cashier discount limit,
+  default reorder level, negative-stock policy. Whitelisted fields, audited changes, cache invalidation.
+- Shared UI: `StatCard`, `Money`, chart tooltip, dashboard hero.
+
+**Files**: `src/server/services/reports/{financials,dashboard}.ts`, `src/server/queries/{dashboard,settings}.ts`,
+`src/server/actions/settings.ts`, `src/server/cache.ts`, `src/lib/validation/settings.ts`, `src/app/(app)/{dashboard,settings}/**`,
+`src/components/app/{money,stat-card}.tsx`.
+
+**Migrations**: none.
+
+**Tests**: 69 passing, including a hand-calculated financial scenario (discounted sale, partial payment, voided sale,
+return + refund, completed order with direct cost, open order deposit, expense correction, out-of-period expense) checking
+revenue, COGS, gross/net profit, cash collected, receivables, inventory valuation, payment-method split and daily trend.
+`tsc`, `eslint`, `next build` clean. Browser check of dashboard and settings save (audit row verified in PostgreSQL).
 
 **Unresolved**: none.
