@@ -30,7 +30,7 @@ Each phase is committed separately once its tests pass.
 | 3 | Business settings, app shell, dashboard | ✅ Complete |
 | 4 | Products, categories, inventory ledger, zero-stock archiving | ✅ Complete |
 | 5 | Suppliers, stock purchases, supplier payments | ✅ Complete |
-| 6 | POS checkout, sales, receipts, returns, voids | ⏳ |
+| 6 | POS checkout, sales, receipts, returns, voids | ✅ Complete |
 | 7 | Customers, orders, payments ledger | ⏳ |
 | 8 | Expenses, cash reconciliation | ⏳ |
 | 9 | Financial reports, analytics, PDF/Excel/CSV export | ⏳ |
@@ -186,5 +186,42 @@ Browser check: product creation → detail page with ledger.
 **Tests**: 93 passing. New: drafts do not move stock; receiving updates stock, ledger and weighted-average cost and
 reactivates sold-out products; double receive blocked; purchases excluded from expenses/COGS; payments, overpayment
 guard, reversals (and double reversal guard); draft editing; cancellation rules; duplicate/empty line validation.
+
+**Unresolved**: none.
+
+---
+
+## Phase 6 — POS checkout, sales, receipts, returns and voids ✅
+
+**Implemented**
+
+- Atomic checkout (`services/sales.ts`): idempotency check → product row locks in stable order → server-side prices
+  → line + cart discounts (pro-rata, exact) and tax per line → cashier discount limit → sale + immutable item snapshots
+  (name, SKU, unit cost, unit price, discount, tax, line total) → stock deduction through the ledger (auto-archive at zero)
+  → payments (multiple methods, cash change, partial payment only for named customers) → audit. Any failure rolls back everything.
+- Duplicate prevention: unique idempotency key per sale; concurrent duplicates resolve to the original sale
+  (unique-violation recovery); the POS keeps the key across retries and renews it only after success.
+- POS terminal: product grid with images and stock, search, category chips, barcode scanner support (scan + Enter adds
+  by barcode/SKU), cart with quantity/line discounts/cart discount, live totals using the same pricing code as the
+  server, customer search and quick-add, split-payment checkout with change due, mobile bottom-sheet cart.
+- Sales history with period filters (today/week/month/year/custom), search, unpaid filter; sale detail with snapshots,
+  payments, returns; printable 80 mm receipt.
+- Returns: partial/multiple returns with exact cumulative pro-rata values, restock only goods accepted back
+  (CUSTOMER_RETURN at original cost), refunds capped by what was paid, revenue and COGS adjusted in the return period.
+- Voids (manager/owner): stock restored with REVERSAL movements, receipts reversed, sale excluded from revenue.
+- Balance payments and payment reversals (append-only; originals never edited).
+- Shared customers and payments services (used fully in Phase 7).
+
+**Files**: `src/lib/pricing.ts`, `src/server/services/{sales,returns,payments,customers}.ts`, `src/server/actions/sales.ts`,
+`src/server/queries/catalog.ts`, `src/lib/validation/sales.ts`, `src/app/(app)/{pos,sales}/**`, `src/app/receipts/[id]/**`,
+`src/components/app/{money-dialogs,period-picker}.tsx`.
+
+**Migrations**: none.
+
+**Tests**: 109 passing. New: cart pricing (discount allocation, tax, exact totals), tender settlement (change, cash-only
+over-tender), full sale with snapshots/ledger/payments, snapshot immutability after product edits, partial + balance
+payments, multiple payment methods, cashier discount limit, triple concurrent submission → one sale, 5 concurrent
+devices for 2 units → 2 sales and auto-archive, configured tax, returns (restocked vs damaged, refund cap, exact
+partial splits, over-return guard), voids, payment reversal. Browser check: scan-to-cart → checkout → receipt.
 
 **Unresolved**: none.
