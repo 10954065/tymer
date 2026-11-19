@@ -31,7 +31,7 @@ Each phase is committed separately once its tests pass.
 | 4 | Products, categories, inventory ledger, zero-stock archiving | ✅ Complete |
 | 5 | Suppliers, stock purchases, supplier payments | ✅ Complete |
 | 6 | POS checkout, sales, receipts, returns, voids | ✅ Complete |
-| 7 | Customers, orders, payments ledger | ⏳ |
+| 7 | Customers, orders, payments ledger | ✅ Complete |
 | 8 | Expenses, cash reconciliation | ⏳ |
 | 9 | Financial reports, analytics, PDF/Excel/CSV export | ⏳ |
 | 10 | PWA, offline queue, synchronisation, conflict review | ⏳ |
@@ -223,5 +223,34 @@ over-tender), full sale with snapshots/ledger/payments, snapshot immutability af
 payments, multiple payment methods, cashier discount limit, triple concurrent submission → one sale, 5 concurrent
 devices for 2 units → 2 sales and auto-archive, configured tax, returns (restocked vs damaged, refund cap, exact
 partial splits, over-return guard), voids, payment reversal. Browser check: scan-to-cart → checkout → receipt.
+
+**Unresolved**: none.
+
+---
+
+## Phase 7 — Customers, orders and payments ✅
+
+**Implemented**
+
+- Customer profiles (name, unique phone, email, address, notes) with lifetime spend, outstanding balance, repeat
+  badge, purchase/order/payment history; sorting by name, top spenders and balances owed.
+- Orders for custom decoration work: products (stock items) and services, agreed price, estimated materials and labour,
+  expected completion, collection/delivery details, internal notes. Lifecycle NEW → DEPOSIT_PAID (on first payment)
+  → IN_PROGRESS → READY → COMPLETED, or CANCELLED.
+- Deposits and additional payments go to the payment ledger — **never revenue by themselves**. Revenue is recognised
+  when the order is completed; stocked items are then deducted with cost snapshots. Direct costs are expenses linked
+  to the order (Phase 8). Order profitability: estimated vs actual (price − products used − direct costs).
+- Cancellation with capped refunds; edits blocked below the amount already paid; completed/cancelled orders are final.
+- Payments ledger page: per-method totals, filters by period and method, links to sales and orders. No double counting:
+  every payment belongs to exactly one sale or one order (DB constraint).
+
+**Files**: `src/server/services/orders.ts`, `src/server/actions/orders.ts`, `src/lib/validation/orders.ts`,
+`src/app/(app)/{orders,customers,payments}/**`, `src/components/app/order-status-badge.tsx`.
+
+**Migrations**: none.
+
+**Tests**: 114 passing. New: deposit is cash not revenue; completion recognises revenue, deducts stock with cost snapshot,
+includes direct costs in COGS; receivables split between open and completed orders; multiple payments and overpayment
+guard; cancellation refund cap and no revenue; edits never below amount paid; customer spend and balance summary.
 
 **Unresolved**: none.
